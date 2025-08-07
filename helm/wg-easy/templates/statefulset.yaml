@@ -35,6 +35,8 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "wg-easy.fullname" . }}
       {{- end }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -90,6 +92,29 @@ spec:
                 name: {{ include "wg-easy.fullname" . }}
                 {{- end }}
           {{- end }}
+        - name: metrics
+          image: mindflavor/prometheus-wireguard-exporter:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          args: ["-a", "true"]
+          ports:
+            - name: metrics
+              containerPort: 9586
+              protocol: TCP
+          env:
+            - name: WG_EXPORTER_INTERFACE
+              value: "wg0"
+            - name: TZ
+              value: "America/Los_Angeles"
+            - name: EXPORT_LATEST_HANDSHAKE_DELAY
+              value: "true"
+            - name: PROMETHEUS_WIREGUARD_EXPORTER_CONFIG_FILE_NAMES
+              value: "/etc/wireguard/wg0.conf"
+            - name: PROMETHEUS_WIREGUARD_EXPORTER_PREPEND_SUDO_ENABLED
+              value: "true"
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
